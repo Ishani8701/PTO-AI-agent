@@ -1,0 +1,15 @@
+# Separate requirements file for mcp_server/ — it runs under its own venv
+# (.venv-mcp, Python 3.10+) because the `mcp` SDK requires Python >=3.10,
+# while the main app's venv is pinned to the system's Python 3.9. The MCP
+# server reuses tools/ directly, so it only needs a light dependency set,
+# not the main app's heavier stack (LangGraph, ChromaDB, sentence-transformers).
+#
+# calendar_bridge/ used to also live here (an MCP client + small HTTP server,
+# hence fastapi/uvicorn below at one point) but was deleted — Google's
+# Calendar MCP server had an unresolved "caller does not have permission"
+# error regardless of scope; calendar access now goes through the plain
+# Calendar REST API directly from the main app (tools/calendar_client.py),
+# which has no Python version constraint and needs no separate process.
+mcp[cli]
+requests
+python-dotenv

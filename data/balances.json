@@ -1,0 +1,42 @@
+[
+  {
+    "employee_id": "E001",
+    "leave_type": "annual",
+    "remaining_days": 11
+  },
+  {
+    "employee_id": "E001",
+    "leave_type": "sick",
+    "remaining_days": 9
+  },
+  {
+    "employee_id": "E002",
+    "leave_type": "earned",
+    "remaining_days": 6
+  },
+  {
+    "employee_id": "E002",
+    "leave_type": "casual_sick",
+    "remaining_days": 9
+  },
+  {
+    "employee_id": "E003",
+    "leave_type": "annual",
+    "remaining_days": 19
+  },
+  {
+    "employee_id": "E003",
+    "leave_type": "sick",
+    "remaining_days": 42
+  },
+  {
+    "employee_id": "E004",
+    "leave_type": "annual",
+    "remaining_days": 20
+  },
+  {
+    "employee_id": "E004",
+    "leave_type": "sick",
+    "remaining_days": 8
+  }
+]

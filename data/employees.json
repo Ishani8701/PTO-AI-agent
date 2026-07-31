@@ -1,0 +1,6 @@
+[
+  { "id": "E001", "full_name": "Alice Chen",    "location_code": "US-SF",  "country": "US", "role": "manager",  "manager_id": null },
+  { "id": "E002", "full_name": "Ravi Kumar",    "location_code": "IN-BLR", "country": "IN", "role": "employee", "manager_id": "E001" },
+  { "id": "E003", "full_name": "Lena Schulz",   "location_code": "DE-MUC", "country": "DE", "role": "employee", "manager_id": "E001" },
+  { "id": "E004", "full_name": "James Bennett", "location_code": "UK-LON", "country": "UK", "role": "employee", "manager_id": "E001" }
+]

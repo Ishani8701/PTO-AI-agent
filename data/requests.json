@@ -1,0 +1,58 @@
+[
+  {
+    "id": "REQ-1001",
+    "employee_id": "E001",
+    "leave_type": "annual",
+    "start_date": "2026-05-18",
+    "end_date": "2026-05-22",
+    "status": "approved"
+  },
+  {
+    "id": "REQ-1002",
+    "employee_id": "E002",
+    "leave_type": "earned",
+    "start_date": "2026-05-04",
+    "end_date": "2026-05-08",
+    "status": "approved"
+  },
+  {
+    "id": "REQ-1003",
+    "employee_id": "E001",
+    "leave_type": "annual",
+    "start_date": "2026-07-29",
+    "end_date": "2026-08-01",
+    "status": "pending"
+  },
+  {
+    "id": "REQ-1004",
+    "employee_id": "E003",
+    "leave_type": "annual",
+    "start_date": "2026-07-23",
+    "end_date": "2026-07-25",
+    "status": "rejected"
+  },
+  {
+    "id": "REQ-1005",
+    "employee_id": "E003",
+    "leave_type": "annual",
+    "start_date": "2026-08-01",
+    "end_date": "2026-08-03",
+    "status": "approved"
+  },
+  {
+    "id": "REQ-1006",
+    "employee_id": "E002",
+    "leave_type": "earned",
+    "start_date": "2026-07-23",
+    "end_date": "2026-07-25",
+    "status": "approved"
+  },
+  {
+    "id": "REQ-1007",
+    "employee_id": "E004",
+    "leave_type": "annual",
+    "start_date": "2026-08-05",
+    "end_date": "2026-08-07",
+    "status": "approved"
+  }
+]
