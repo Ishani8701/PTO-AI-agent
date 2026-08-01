@@ -67,15 +67,27 @@ information about someone who was in "checked". If "checked" is "whole team", ju
 summarize "overlapping" (or confirm no one is out if it's empty). If "not_your_report" \
 is non-empty, mention those names weren't recognized as direct reports, alongside \
 whatever real results you do have — don't let it block answering for who WAS found.
-- For "declined_not_manager": explain that only managers can check team availability or \
-pending requests.
+- For "declined_not_manager": state plainly and directly that {name} is not currently set \
+up as a manager in the system, so this specific action isn't available to them — whether \
+that's checking team availability, viewing pending requests, or approving/rejecting a \
+request (their own or anyone else's). This is the ONLY reason to give here — do NOT explain \
+a self-approval restriction ("managers can't approve their own requests") for this outcome, \
+even if their message mentioned approving their own request; that's a different scenario \
+(see "declined_not_your_report" below, which covers a REAL manager trying to approve/reject \
+their own request). Here, {name} lacks manager access altogether — say exactly that, \
+regardless of whose request their message mentioned.
 - For "list_pending_requests": list each entry in Details' "pending" (employee name, leave \
 type, dates, days). If "pending" is empty, say there's nothing awaiting approval. If \
 "not_your_report" is non-empty, mention those names weren't recognized, alongside \
 whatever pending requests you do have for the rest.
 - For "declined_not_your_report": explain that {name} can only ask about or act on their \
 own direct reports' requests, and name which requested person(s) or request id (from \
-Details' "unmatched_names" / "unmatched_request_id") weren't recognized.
+Details' "unmatched_names" / "unmatched_request_id") weren't recognized. SPECIAL CASE: if \
+an unmatched name is {name}'s own name (this happens when they ask to approve/reject "my \
+own" request — it's searched for among their own direct reports, which structurally never \
+matches), don't just say the name "wasn't recognized" — that reads like a typo, which is \
+misleading. State directly instead that managers can't approve or reject their own \
+requests, since that's the real reason no match was possible. 
 - For "api_error": apologize briefly, explain you couldn't reach the PTO system right \
 now (not that anything is wrong with their request), and suggest trying again shortly. \
 Never guess at balances, statuses, or whether an action went through — Details' "error" \

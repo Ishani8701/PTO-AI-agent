@@ -30,8 +30,8 @@
     "id": "happy_04",
     "category": "happy_path",
     "employee_id": "E002",
-    "turns": ["I want to take earned leave for 3 days starting two weeks from today", "yes, go ahead"],
-    "expected_behavior": "Full submission workflow: validate against real balance/held days, present a confirmation, only submit after explicit yes. Uses 'earned' specifically — Ravi's real valid leave types are earned/casual_sick, not annual.",
+    "turns": ["I want to take earned leave for 3 days starting six months from today", "yes, go ahead"],
+    "expected_behavior": "Full submission workflow: validate against real balance/held days, present a confirmation, only submit after explicit yes. Uses 'earned' specifically — Ravi's real valid leave types are earned/casual_sick, not annual. Uses a 6-month offset specifically to stay clear of Ravi's existing pending/approved requests (scattered across May-Sep 2026) — a shorter offset drifts into colliding with real fixture data depending on which day this runs (confirmed: this happened with a 2-week offset).",
     "expected_tools": ["check_balance", "list_requests", "submit_request"],
     "expected_outcome": "The request is actually submitted only after confirmation — never before."
   },
@@ -103,8 +103,8 @@
     "id": "ambiguous_04",
     "category": "ambiguous",
     "employee_id": "E003",
-    "turns": ["I want annual leave for 3 days starting three weeks from today", "can you repeat my request?"],
-    "expected_behavior": "A repeat-back request should re-present the same pending details, not treat it as a fresh intent or as a yes/no. Turn 1 reaches validation (checks real balance and held days) before presenting the confirmation that turn 2 asks to see again.",
+    "turns": ["I want annual leave for 3 days starting six months from today", "can you repeat my request?"],
+    "expected_behavior": "A repeat-back request should re-present the same pending details, not treat it as a fresh intent or as a yes/no. Turn 1 reaches validation (checks real balance and held days) before presenting the confirmation that turn 2 asks to see again. Uses a 6-month offset to stay clear of Lena's existing approved Aug 1-3 window — see happy_04's note on why a shorter offset is fragile here.",
     "expected_tools": ["check_balance", "list_requests"],
     "expected_outcome": "Re-states the same pending confirmation; does not submit and does not restart clarification."
   },
