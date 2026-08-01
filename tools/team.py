@@ -7,6 +7,7 @@ from datetime import datetime
 
 from app import config
 from tools.requests import list_requests
+from tracing import traced
 
 
 def get_direct_reports(manager_id: str) -> list[dict]:
@@ -36,6 +37,7 @@ def resolve_direct_reports_by_name(manager_id: str, names: list[str]) -> tuple[l
     return matched, unmatched
 
 
+@traced("team_availability")
 def get_team_availability(
     manager_id: str, start_date: str, end_date: str, report_ids: list[str] | None = None
 ) -> list[dict]:
@@ -71,6 +73,7 @@ def get_team_availability(
     return overlapping
 
 
+@traced("list_pending_requests")
 def get_team_pending_requests(manager_id: str, report_ids: list[str] | None = None) -> list[dict]:
     """All pending requests across the manager's direct reports (or a given
     subset) — the manager's actionable approval queue, not scoped to any

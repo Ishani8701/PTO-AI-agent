@@ -7,6 +7,7 @@ LangGraph handlers) needed to change at all.
 from __future__ import annotations
 
 from tools.servicenow_client import query, update
+from tracing import traced
 
 _TABLE = "u_pto_balance"
 
@@ -19,6 +20,7 @@ def _to_balance(record: dict) -> dict:
     }
 
 
+@traced("check_balance")
 def get_balances(employee_id: str) -> list[dict]:
     """All leave-type balances for an employee."""
     records = query(_TABLE, f"u_employee_id={employee_id}")

@@ -27,3 +27,12 @@ def get_session(employee_id: str) -> WorkflowState:
     if employee_id not in _SESSIONS:
         _SESSIONS[employee_id] = WorkflowState()
     return _SESSIONS[employee_id]
+
+
+def reset_session(employee_id: str) -> None:
+    """Clear an employee's in-memory workflow state. Used by evaluation/ for
+    test isolation between cases (so a previous case's leftover pending
+    confirmation or active_intent can't bleed into the next one run against
+    the same employee) — never called by the app's normal request flow.
+    """
+    _SESSIONS.pop(employee_id, None)

@@ -14,6 +14,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from tools.servicenow_client import create, query, update
+from tracing import traced
 
 _TABLE = "u_pto_request"
 
@@ -29,6 +30,7 @@ def _to_request(record: dict) -> dict:
     }
 
 
+@traced("list_requests")
 def list_requests(employee_id: str) -> list[dict]:
     records = query(_TABLE, f"u_employee_id={employee_id}")
     return [_to_request(r) for r in records]
@@ -49,6 +51,7 @@ def get_held_days(employee_id: str, leave_type: str) -> int:
     return total
 
 
+@traced("submit_request")
 def create_request(employee_id: str, leave_type: str, start_date: str, end_date: str) -> dict:
     """Create a new pending request. Does not validate — callers must run
     validate_request() first. Kept separate so "write the record" stays a
@@ -67,6 +70,7 @@ def create_request(employee_id: str, leave_type: str, start_date: str, end_date:
     return _to_request(record)
 
 
+@traced("update_request_status")
 def update_request_status(request_id: str, status: str) -> dict:
     """Change a request's status (e.g. a manager's approve/reject decision).
     Does not touch balances — deducting on approval is a separate step,

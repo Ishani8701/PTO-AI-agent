@@ -5,10 +5,12 @@ from __future__ import annotations
 from rag.embeddings import embed
 from rag.rerank import rerank
 from rag.store import get_collection
+from tracing import traced
 
 _CANDIDATE_POOL = 15
 
 
+@traced("search_policy")
 def retrieve_policy(query: str, country: str, k: int = 3) -> list[dict]:
     """Return the top-k policy chunks relevant to `query`, restricted to
     `country`'s sections and the shared "Global" section. Country is a hard

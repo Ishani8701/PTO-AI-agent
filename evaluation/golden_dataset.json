@@ -1,0 +1,139 @@
+[
+  {
+    "id": "happy_01",
+    "category": "happy_path",
+    "employee_id": "E003",
+    "turns": ["What's my balance?"],
+    "expected_behavior": "A direct read-only lookup — no confirmation needed, no clarification needed.",
+    "expected_tools": ["check_balance"],
+    "expected_outcome": "States Lena's actual annual and sick leave balances, grounded in real data, not invented numbers."
+  },
+  {
+    "id": "happy_02",
+    "category": "happy_path",
+    "employee_id": "E002",
+    "turns": ["Can you list my time off requests?"],
+    "expected_behavior": "A direct read-only lookup of the employee's own request history.",
+    "expected_tools": ["list_requests"],
+    "expected_outcome": "Lists Ravi's actual requests with real statuses/dates, not invented ones."
+  },
+  {
+    "id": "happy_03",
+    "category": "happy_path",
+    "employee_id": "E003",
+    "turns": ["How much sick leave do I get in Germany?"],
+    "expected_behavior": "Grounded RAG answer, scoped to the employee's own country.",
+    "expected_tools": ["search_policy"],
+    "expected_outcome": "Answer is specific to Germany's sick leave policy, not a generic or US-defaulted answer."
+  },
+  {
+    "id": "happy_04",
+    "category": "happy_path",
+    "employee_id": "E002",
+    "turns": ["I want to take earned leave for 3 days starting two weeks from today", "yes, go ahead"],
+    "expected_behavior": "Full submission workflow: validate against real balance/held days, present a confirmation, only submit after explicit yes. Uses 'earned' specifically — Ravi's real valid leave types are earned/casual_sick, not annual.",
+    "expected_tools": ["check_balance", "list_requests", "submit_request"],
+    "expected_outcome": "The request is actually submitted only after confirmation — never before."
+  },
+  {
+    "id": "happy_05",
+    "category": "happy_path",
+    "employee_id": "E001",
+    "turns": ["Who's out on my team next week?"],
+    "expected_behavior": "Manager-only tool, direct lookup, no confirmation needed.",
+    "expected_tools": ["team_availability"],
+    "expected_outcome": "Lists real overlapping time off for Alice's actual direct reports."
+  },
+  {
+    "id": "happy_06",
+    "category": "happy_path",
+    "employee_id": "E001",
+    "turns": ["What's pending for my team?"],
+    "expected_behavior": "Manager-only tool, direct lookup.",
+    "expected_tools": ["list_pending_requests"],
+    "expected_outcome": "Lists real pending requests across Alice's direct reports."
+  },
+  {
+    "id": "happy_07",
+    "category": "happy_path",
+    "employee_id": "E001",
+    "turns": ["I want to take a week off before end of September — any suggestions on timing?"],
+    "expected_behavior": "Open-ended reasoning: gathers real facts across multiple tools before answering, reasons about tradeoffs, never claims to have submitted anything.",
+    "expected_tools": ["check_balance", "list_requests", "team_availability"],
+    "expected_outcome": "Recommendation is grounded in real balance/requests/team data, proposes concrete dates, explicitly defers actual submission to the normal request flow."
+  },
+  {
+    "id": "happy_08",
+    "category": "happy_path",
+    "employee_id": "E002",
+    "turns": ["I want to submit annual leave for next month", "actually never mind"],
+    "expected_behavior": "A mid-flow cancellation should be honored cleanly, not pushed through.",
+    "expected_tools": [],
+    "expected_outcome": "Confirms the request was cancelled, does not submit anything."
+  },
+  {
+    "id": "ambiguous_01",
+    "category": "ambiguous",
+    "employee_id": "E002",
+    "turns": ["I want to take some time off in October"],
+    "expected_behavior": "Missing leave type and exact dates — should ask a clarifying question, not guess or submit.",
+    "expected_tools": [],
+    "forbidden_tools": ["submit_request"],
+    "expected_outcome": "Asks for the missing specifics (leave type and/or dates); does not call submit_request yet."
+  },
+  {
+    "id": "ambiguous_02",
+    "category": "ambiguous",
+    "employee_id": "E004",
+    "turns": ["what's the leave policy"],
+    "expected_behavior": "Vague but answerable — should ground the answer in James's own country rather than refusing or asking to clarify country (already known).",
+    "expected_tools": ["search_policy"],
+    "expected_outcome": "Grounded answer scoped to the UK, not a generic non-answer."
+  },
+  {
+    "id": "ambiguous_03",
+    "category": "ambiguous",
+    "employee_id": "E002",
+    "turns": ["I want to submit annual leave", "actually, what's my balance?"],
+    "expected_behavior": "A digression mid-flow should be answered on its own terms without losing the original in-progress request.",
+    "expected_tools": ["check_balance"],
+    "expected_outcome": "Answers the balance question; the original submit_request flow is not silently abandoned or wrongly submitted."
+  },
+  {
+    "id": "ambiguous_04",
+    "category": "ambiguous",
+    "employee_id": "E003",
+    "turns": ["I want annual leave for 3 days starting three weeks from today", "can you repeat my request?"],
+    "expected_behavior": "A repeat-back request should re-present the same pending details, not treat it as a fresh intent or as a yes/no. Turn 1 reaches validation (checks real balance and held days) before presenting the confirmation that turn 2 asks to see again.",
+    "expected_tools": ["check_balance", "list_requests"],
+    "expected_outcome": "Re-states the same pending confirmation; does not submit and does not restart clarification."
+  },
+  {
+    "id": "edge_01",
+    "category": "edge_case",
+    "employee_id": "E003",
+    "turns": ["I want to take 60 days of annual leave starting tomorrow", "yes go ahead"],
+    "expected_behavior": "Balance validation should catch an obviously-too-large request before submission — validate_request checks real balance/held days and should block this with a validation_error, never reaching the actual write.",
+    "expected_tools": ["check_balance", "list_requests"],
+    "forbidden_tools": ["submit_request"],
+    "expected_outcome": "Explains the balance shortfall clearly; submit_request (the actual create) must NOT be called — this must be blocked at validation."
+  },
+  {
+    "id": "edge_02",
+    "category": "edge_case",
+    "employee_id": "E002",
+    "turns": ["can I request compassionate leave for next week?"],
+    "expected_behavior": "An invalid/unsupported leave type should be explained, not silently accepted or hallucinated as valid.",
+    "expected_tools": [],
+    "expected_outcome": "Clearly states what leave types are actually available instead of proceeding with an invalid one."
+  },
+  {
+    "id": "edge_03",
+    "category": "edge_case",
+    "employee_id": "E001",
+    "turns": ["approve REQ-9999"],
+    "expected_behavior": "A nonexistent request id should fail gracefully, not crash or hallucinate a result — resolving a bare id searches the whole team's pending requests.",
+    "expected_tools": ["list_pending_requests"],
+    "expected_outcome": "Explains the request wasn't found; no approval action is taken."
+  }
+]

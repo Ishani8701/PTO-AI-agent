@@ -17,6 +17,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from app import config
+from tracing import traced
 
 TOKENS_DIR = config.DATA_DIR / "calendar_tokens"
 
@@ -50,6 +51,7 @@ def _load_credentials(employee_id: str) -> Credentials:
     return creds
 
 
+@traced("check_calendar")
 def get_calendar_events(employee_id: str, start_date: str, end_date: str) -> list[dict]:
     creds = _load_credentials(employee_id)
     service = build("calendar", "v3", credentials=creds)
