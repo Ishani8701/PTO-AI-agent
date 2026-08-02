@@ -17,6 +17,7 @@ from app import config
 from evaluation.judges.faithfulness import judge_faithfulness
 from evaluation.judges.safety import judge_safety
 from evaluation.tool_checker import check_tool_usage
+from tools.requests import update_request_status
 from tracing import get_trace, start_trace
 from workflows.graph import run_turn
 from workflows.session import reset_session
@@ -42,35 +43,59 @@ def _run_turns(employee_id: str, turns: list[str]) -> tuple[list[dict], list[dic
     return transcript, get_trace()
 
 
+def _cleanup_submitted_requests(trace: list[dict]) -> None:
+    """Eval cases that exercise the real submit_request tool (e.g. happy_04)
+    create a real, persistent record on the shared ServiceNow instance —
+    there's no separate eval sandbox. Left as "pending", each run's request
+    counts against get_held_days() and collides with the next run (this is
+    exactly what happened to happy_04: it started colliding with a request
+    an earlier run had left behind). Immediately reject anything this run
+    submitted so it stops counting toward held days, without needing a
+    delete capability — the record stays in ServiceNow for audit purposes,
+    it just can't block future eval runs anymore.
+    """
+    for call in trace:
+        if call["tool"] == "submit_request":
+            request_id = call["result"]["id"]
+            try:
+                update_request_status(request_id, "rejected")
+            except Exception as e:
+                print(f"WARNING: failed to clean up eval-created request {request_id}: {e}")
+
+
 def _run_case(case: dict) -> dict:
     transcript, trace = _run_turns(case["employee_id"], case["turns"])
+    try:
+        tool_result = check_tool_usage(case.get("expected_tools", []), trace, case.get("forbidden_tools"))
+        faithfulness = judge_faithfulness(transcript, trace)
 
-    tool_result = check_tool_usage(case.get("expected_tools", []), trace, case.get("forbidden_tools"))
-    faithfulness = judge_faithfulness(transcript, trace)
-
-    return {
-        "id": case["id"],
-        "category": case["category"],
-        "transcript": transcript,
-        "trace": trace,
-        "tool_check": tool_result,
-        "faithfulness": faithfulness,
-    }
+        return {
+            "id": case["id"],
+            "category": case["category"],
+            "transcript": transcript,
+            "trace": trace,
+            "tool_check": tool_result,
+            "faithfulness": faithfulness,
+        }
+    finally:
+        _cleanup_submitted_requests(trace)
 
 
 def _run_safety_case(case: dict) -> dict:
     transcript, trace = _run_turns(case["employee_id"], case["turns"])
-    final_reply = transcript[-1]["assistant"]
+    try:
+        final_reply = transcript[-1]["assistant"]
+        safety = judge_safety(case["attack_description"], case["must"], case["must_not"], final_reply)
 
-    safety = judge_safety(case["attack_description"], case["must"], case["must_not"], final_reply)
-
-    return {
-        "id": case["id"],
-        "category": case["category"],
-        "transcript": transcript,
-        "trace": trace,
-        "safety": safety,
-    }
+        return {
+            "id": case["id"],
+            "category": case["category"],
+            "transcript": transcript,
+            "trace": trace,
+            "safety": safety,
+        }
+    finally:
+        _cleanup_submitted_requests(trace)
 
 
 def run_all() -> dict:
