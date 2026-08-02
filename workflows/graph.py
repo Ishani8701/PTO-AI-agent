@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from langgraph.graph import END, StateGraph
 
+from guardrails import check_input, check_output
 from tools.servicenow_client import ServiceNowError
 from workflows.advisory import handle_advisory_question
 from workflows.classify import classify
@@ -29,6 +30,34 @@ from workflows.handlers import (
 from workflows.respond import response_generation_node
 from workflows.session import get_session
 from workflows.state import AgentState
+
+
+_BLOCKED_INPUT_REPLY = (
+    "I'm not able to help with that. I can help with policy questions, checking your "
+    "balance, submitting or managing PTO requests, and planning advice for when to take "
+    "time off — and if you're a manager, checking your team's availability or reviewing "
+    "pending requests too."
+)
+
+
+def input_guardrail_node(state: AgentState) -> dict:
+    """Runs before classify() even sees the message — the entry point of
+    the whole graph. A flagged message never reaches any tool or LLM
+    downstream. The user gets a fixed, generic decline (never told the
+    specific reason — that helps an attacker iterate, it doesn't help a
+    legitimate user); the real reason is logged for audit purposes. Session
+    state (active_intent, pending_confirmation) is left untouched, so a
+    false positive doesn't cost a user their in-progress flow.
+    """
+    is_safe, reason = check_input(state["message"])
+    if not is_safe:
+        print(f"[input guardrail] blocked message from {state['employee']['id']}: {reason}")
+        return {"outcome": "blocked_input", "reply": _BLOCKED_INPUT_REPLY}
+    return {}
+
+
+def route_after_input_guardrail(state: AgentState) -> str:
+    return "memory_update" if state["outcome"] == "blocked_input" else "classify"
 
 
 def classify_node(state: AgentState) -> dict:
@@ -126,8 +155,34 @@ def route_after_advisory(state: AgentState) -> str:
     # success sets `reply` directly and skips response_generation (see
     # workflows/advisory.py); a ServiceNowError caught by _safe() sets
     # outcome="api_error" instead, with no `reply` — that case still needs
-    # response_generation to phrase a graceful failure message.
-    return "response_generation" if state["outcome"] == "api_error" else "memory_update"
+    # response_generation to phrase a graceful failure message. Either way,
+    # a real reply ends up going through output_guardrail_node before
+    # memory_update, same as every other path.
+    return "response_generation" if state["outcome"] == "api_error" else "output_guardrail_node"
+
+
+_BLOCKED_OUTPUT_REPLY = (
+    "I wasn't able to confirm that response is accurate, so I don't want to share it "
+    "as-is — could you try rephrasing, or ask something more specific?"
+)
+
+
+def output_guardrail_node(state: AgentState) -> dict:
+    """Runs after a reply is fully formed (from either response_generation
+    or the advisory branch's direct reply) and before memory_update — so a
+    blocked/replaced reply is what actually gets persisted to session
+    history, not the discarded original. Unsafe output is replaced with a
+    fixed fallback, never retried/regenerated (see design discussion — a
+    retry adds cost/latency with no guarantee it fixes the underlying
+    issue). The real reply and reason are logged even though the user only
+    ever sees the generic fallback.
+    """
+    is_safe, reason = check_output(state["reply"], state["tool_result"])
+    if not is_safe:
+        print(f"[output guardrail] blocked reply for {state['employee']['id']}: {reason}")
+        print(f"[output guardrail] original reply was: {state['reply']!r}")
+        return {"reply": _BLOCKED_OUTPUT_REPLY}
+    return {}
 
 
 def memory_update_node(state: AgentState) -> dict:
@@ -160,9 +215,12 @@ def build_graph():
     graph.add_node("resolve_manager_action_node", _safe(resolve_manager_action_node))
     graph.add_node("manager_action_submission_node", _safe(manager_action_submission_node))
     graph.add_node("response_generation", response_generation_node)
+    graph.add_node("input_guardrail_node", input_guardrail_node)
+    graph.add_node("output_guardrail_node", output_guardrail_node)
     graph.add_node("memory_update", memory_update_node)
 
-    graph.set_entry_point("classify")
+    graph.set_entry_point("input_guardrail_node")
+    graph.add_conditional_edges("input_guardrail_node", route_after_input_guardrail)
     graph.add_conditional_edges("classify", route_after_classify)
     graph.add_conditional_edges("clarification_node", route_after_clarification)
     graph.add_conditional_edges("validate_node", route_after_validation)
@@ -177,7 +235,8 @@ def build_graph():
     ):
         graph.add_edge(node, "response_generation")
 
-    graph.add_edge("response_generation", "memory_update")
+    graph.add_edge("response_generation", "output_guardrail_node")
+    graph.add_edge("output_guardrail_node", "memory_update")
     graph.add_edge("memory_update", END)
 
     return graph.compile()

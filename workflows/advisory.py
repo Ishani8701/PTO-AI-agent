@@ -142,18 +142,26 @@ def _execute_tool(name: str, tool_input: dict, employee: dict) -> dict:
     return {"error": f"Unknown tool {name!r}"}
 
 
-def answer_advisory_question(employee: dict, message: str, history: list) -> tuple[str, list]:
+def answer_advisory_question(employee: dict, message: str, history: list) -> tuple[str, list, list]:
     """Runs the Opus tool-use loop. `history` is a simplified list of prior
     {role, content} TEXT turns only — not raw tool-loop internals, which are
     scratch work for a single turn, not something future turns need to see
     (and persisting them risks breaking tool_use/tool_result pairing across
-    turns). Returns (final_answer_text, updated_history).
+    turns). Returns (final_answer_text, updated_history, collected_tool_results)
+    — the third element exists specifically so handle_advisory_question can
+    expose what was actually looked up as state["tool_result"], the same way
+    every deterministic handler does; without it, output_guardrail_node (see
+    workflows/graph.py) would have no real Details to check this branch's
+    replies against, and would incorrectly flag every advisory answer as
+    ungrounded regardless of how well-grounded it actually was — confirmed:
+    this is exactly what happened before this field existed.
     """
     client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY, base_url=config.ANTHROPIC_BASE_URL)
     system = build_system_prompt(employee)
     tools = _tools_for(employee)
 
     messages = list(history) + [{"role": "user", "content": message}]
+    collected_results: list[dict] = []
 
     final_text = "I wasn't able to finish reasoning through this in time — could you narrow the question a bit?"
     for _ in range(_MAX_ROUNDS):
@@ -174,6 +182,7 @@ def answer_advisory_question(employee: dict, message: str, history: list) -> tup
         for block in resp.content:
             if block.type == "tool_use":
                 result = _execute_tool(block.name, block.input, employee)
+                collected_results.append({"tool": block.name, "input": block.input, "result": result})
                 tool_results.append(
                     {"type": "tool_result", "tool_use_id": block.id, "content": str(result)}
                 )
@@ -186,7 +195,7 @@ def answer_advisory_question(employee: dict, message: str, history: list) -> tup
             {"role": "assistant", "content": final_text},
         ]
     )[-_SLIDING_WINDOW:]
-    return final_text, updated_history
+    return final_text, updated_history, collected_results
 
 
 def handle_advisory_question(state: AgentState) -> dict:
@@ -195,12 +204,13 @@ def handle_advisory_question(state: AgentState) -> dict:
     running it through a second LLM call to "rephrase" it would be a
     redundant cost for no benefit (see workflows/graph.py's routing).
     """
-    answer, history = answer_advisory_question(
+    answer, history, collected_results = answer_advisory_question(
         state["employee"], state["message"], state["advisory_history"]
     )
     return {
         "reply": answer,
         "advisory_history": history,
+        "tool_result": collected_results,
         # stays "advisory_question", not None — classify() has no visibility into
         # advisory_history, so this is the only signal it has that a same-topic
         # follow-up ("what about September instead?") continues the conversation
